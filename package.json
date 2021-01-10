@@ -1,0 +1,14 @@
+{
+  "name": "poc-gatesync",
+  "version": "1.0.0",
+  "description": "Sync program between environments for GateAccess",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Andrew Stanton",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^8.2.0"
+  }
+}
