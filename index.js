@@ -2,25 +2,26 @@
 require("dotenv").config();
 
 // Local Imports
-const color = require("./js/colors");
 const survey = require("./js/survey");
-const mongo = require("./js/mongo");
+const MongoDB = require("./js/mongo");
 
 // Main Function For Sync
-function main() {
+async function main() {
   // Welcome Message
-  console.log(
-    color.bg.White,
-    color.fg.Black,
-    "* * * * * Welcome To GateSync * * * * *",
-    color.Reset,
-  );
-  console.log("\n");
+  console.log("* * * * * Welcome To GateSync * * * * *");
 
   // Get Connection Details...
-  const connection = survey();
+  // const connection = survey();
 
-  console.log({ connection });
+  // Setup MongoClient
+  try {
+    const mongo = new MongoDB("mongodb://localhost:27017", "gateaccess");
+    const arr = await mongo.getAllCollections();
+    console.log({ arr });
+  } catch (err) {
+    console.log("ERROR OCCURRED!");
+    console.log({ err });
+  }
 }
 
 // Run Program
