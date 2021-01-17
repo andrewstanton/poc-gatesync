@@ -31,6 +31,22 @@ class MongoDB {
   }
 
   /**
+   * Test connection
+   *
+   * @return {Promise} - Promise is connection worked
+   */
+  isConnected() {
+    return new Promise(async (res, rej) => {
+      try {
+        await this.client.connect();
+        return res(true);
+      } catch (err) {
+        return rej(err);
+      }
+    });
+  }
+
+  /**
    * Get all collections in database
    *
    * @return {Promise} - Promise with either connection or error

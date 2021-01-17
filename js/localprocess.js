@@ -14,6 +14,31 @@ class LocalProcess {
   }
 
   /**
+   * Test to see if env exists
+   *
+   * @return {boolean} - Returns boolean to see if env is setup
+   */
+  isEnvSetup() {
+    const file = path.join(this.currentDir, "/.env");
+    if (!fs.existsSync(file)) return false;
+
+    // Get .env variables
+    const {
+      GATESYNC_FROM_URI,
+      GATESYNC_FROM_DB,
+      GATESYNC_TO_URI,
+      GATESYNC_TO_DB,
+    } = process.env;
+
+    return GATESYNC_FROM_URI &&
+      GATESYNC_FROM_DB &&
+      GATESYNC_TO_URI &&
+      GATESYNC_TO_DB
+      ? true
+      : false;
+  }
+
+  /**
    * Create tmp directory for storing files
    * if "tmp" folder exists it will be emptied
    *
