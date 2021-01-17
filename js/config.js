@@ -22,6 +22,7 @@ class Config {
   gatherMongoDetails() {
     const hasEnv = new LocalProcess().isEnvSetup();
     if (hasEnv) {
+      console.log("Local valid .env found! :-)");
       return {
         from_uri: process.env.GATESYNC_FROM_URI,
         from_db: process.env.GATESYNC_FROM_DB,
@@ -29,6 +30,7 @@ class Config {
         to_db: process.env.GATESYNC_TO_DB,
       };
     } else {
+      console.log("No valid .env found :-(");
       return this.survey();
     }
   }
