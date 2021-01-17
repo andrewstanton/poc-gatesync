@@ -1,3 +1,4 @@
+const LocalProcess = require("./localprocess");
 const { MongoClient } = require("mongodb");
 
 class MongoDB {
@@ -5,12 +6,13 @@ class MongoDB {
    * Setup class with connection to DB
    * @param {string} uri - connection URI
    * @param {string} db - database to connect to
-   * @return {void}
+   * @return {MongoDB} - returns instance of current class
    */
   constructor(uri, db) {
-    console.log("CONSTRUCTOR");
     this.setClient(uri);
     this.db = db;
+    this.localProcess = new LocalProcess();
+    return this;
   }
 
   /**
@@ -42,6 +44,93 @@ class MongoDB {
         res(arr);
       } catch (err) {
         rej(err);
+      }
+    });
+  }
+
+  /**
+   * Gathers Collection Data into Array for JSON
+   *
+   * @param {sting} db
+   * @param {string} collection
+   * @return {Promise} - Return of query promise
+   */
+  collectionDataToArray(db, collection) {
+    const query = {};
+    return db.collection(collection).find(query).toArray();
+  }
+
+  /**
+   * Export collections to json files
+   *
+   * @param {array} collections - Array of collection names
+   * @return {Promise} - Promise when all JSON files have been written
+   */
+  exportCollectionsToJson(collections) {
+    return new Promise(async (res, rej) => {
+      try {
+        await this.client.connect();
+        const db = await this.client.db(this.db);
+
+        // Loop thru collections
+        let promises = collections.map(
+          (c) =>
+            new Promise(async (_res, _rej) => {
+              try {
+                const data = await this.collectionDataToArray(db, c);
+                await this.localProcess.writeJSONFile(c, data);
+                return _res(true);
+              } catch (err) {
+                _rej(err);
+              }
+            }),
+        );
+
+        // Wait Till All Promises Finish
+        Promise.all(promises)
+          .then(() => {
+            res(true);
+          })
+          .catch((err) => rej(err));
+      } catch (err) {
+        return rej(err);
+      }
+    });
+  }
+
+  /**
+   * Import JSON files into database
+   *
+   * @param {array} collections - Collections to import
+   * @return {Promise} - Promise after importing collections
+   */
+  importJsonToCollections(collections) {
+    return new Promise(async (res, rej) => {
+      try {
+        await this.client.connect();
+        const db = this.client.db(this.db);
+
+        let promises = collections.map(
+          (c) =>
+            new Promise(async (_res, _rej) => {
+              try {
+                // drop collection??
+                await db.dropCollection(c);
+
+                const data = await this.localProcess.readJsonFile(c);
+                db.collection(c).insertMany(data);
+                return _res(true);
+              } catch (err) {
+                _rej(err);
+              }
+            }),
+        );
+
+        Promise.all(promises).then(() => {
+          return res(true);
+        });
+      } catch (err) {
+        return rej(err);
       }
     });
   }
