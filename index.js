@@ -35,6 +35,9 @@ async function main() {
     // Import JSON into db2
     await db2.importJsonToCollections(arr);
 
+    // Remove Tmp Directory
+    local.removeTmpDir();
+
     // Completed Migration
     console.log("MIGRATION COMPLETE!");
     process.exit();

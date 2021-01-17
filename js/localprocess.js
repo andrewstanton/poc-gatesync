@@ -25,6 +25,16 @@ class LocalProcess {
   }
 
   /**
+   * Removes tmp directory for storing files
+   *
+   * @return {void}
+   */
+  removeTmpDir() {
+    fs.removeSync(this.tmpPath);
+    return;
+  }
+
+  /**
    * Write data to JSON file
    *
    * @param {string} name - name of JSON file

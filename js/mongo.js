@@ -49,6 +49,39 @@ class MongoDB {
   }
 
   /**
+   * Remove collections from database copying into
+   *
+   * @param {MongoClient} db
+   * @param {array} collections
+   * @return {Promise} - Promise of removing collections
+   */
+  removeDuplicateCollections(db, collections) {
+    return new Promise(async (res, rej) => {
+      try {
+        let arr = await db.listCollections().toArray();
+        let promises = arr.map(
+          async (c) =>
+            new Promise(async (_res, _rej) => {
+              try {
+                if (collections.includes(c.name)) {
+                  await db.dropCollection(c.name);
+                }
+              } catch (err) {
+                _rej(err);
+              }
+            }),
+        );
+
+        Promise.all(promises).then(() => {
+          res(true);
+        });
+      } catch (err) {
+        rej(err);
+      }
+    });
+  }
+
+  /**
    * Gathers Collection Data into Array for JSON
    *
    * @param {sting} db
@@ -110,13 +143,13 @@ class MongoDB {
         await this.client.connect();
         const db = this.client.db(this.db);
 
+        // Loop thru collections and drop if exists
+        await this.removeDuplicateCollections(db, collections);
+
         let promises = collections.map(
           (c) =>
             new Promise(async (_res, _rej) => {
               try {
-                // drop collection??
-                await db.dropCollection(c);
-
                 const data = await this.localProcess.readJsonFile(c);
                 db.collection(c).insertMany(data);
                 return _res(true);
