@@ -1,5 +1,6 @@
 const LocalProcess = require("./localprocess");
 const { MongoClient } = require("mongodb");
+const ProgressBar = require("progress");
 
 class MongoDB {
   /**
@@ -11,6 +12,7 @@ class MongoDB {
   constructor(uri, db) {
     this.setClient(uri);
     this.db = db;
+    this.limit = 1000;
     this.localProcess = new LocalProcess();
     return this;
   }
@@ -47,15 +49,38 @@ class MongoDB {
   }
 
   /**
-   * Get all collections in database
+   * Export data to JSON files
    *
-   * @return {Promise} - Promise with either connection or error
+   * @return {Promise} - Promise that returns an array
    */
-  getAllCollections() {
+  exportData() {
     return new Promise(async (res, rej) => {
       try {
         await this.client.connect();
-        let arr = await this.client.db(this.db).listCollections().toArray();
+        const db = this.client.db(this.db);
+
+        const arr = await this.getAllCollections(db);
+        await this.exportCollectionsToJson(db, arr);
+
+        res(arr);
+      } catch (err) {
+        rej(err);
+      } finally {
+        this.client.close();
+      }
+    });
+  }
+
+  /**
+   * Get all collections in database
+   *
+   * @param {MongoClient} db - connection details
+   * @return {Promise} - Promise with either connection or error
+   */
+  getAllCollections(db) {
+    return new Promise(async (res, rej) => {
+      try {
+        let arr = await db.listCollections().toArray();
         arr = arr.map((c) => c.name);
         res(arr);
       } catch (err) {
@@ -75,6 +100,7 @@ class MongoDB {
     return new Promise(async (res, rej) => {
       try {
         let arr = await db.listCollections().toArray();
+
         let promises = arr.map(
           async (c) =>
             new Promise(async (_res, _rej) => {
@@ -100,34 +126,53 @@ class MongoDB {
   /**
    * Gathers Collection Data into Array for JSON
    *
-   * @param {sting} db
-   * @param {string} collection
+   * @param {MongoClient} db - database connection
+   * @param {string} collection - Collection from mongodb
+   * @param {number} skip - Skip number
    * @return {Promise} - Return of query promise
    */
-  collectionDataToArray(db, collection) {
+  collectionDataToArray(db, collection, skip) {
     const query = {};
-    return db.collection(collection).find(query).toArray();
+    return db
+      .collection(collection)
+      .find(query)
+      .skip(skip)
+      .limit(this.limit)
+      .toArray();
   }
 
   /**
    * Export collections to json files
    *
+   * @param {MongoClient} db - Connection to mongodb
    * @param {array} collections - Array of collection names
    * @return {Promise} - Promise when all JSON files have been written
    */
-  exportCollectionsToJson(collections) {
+  exportCollectionsToJson(db, collections) {
     return new Promise(async (res, rej) => {
-      try {
-        await this.client.connect();
-        const db = await this.client.db(this.db);
+      const bar = new ProgressBar("Exporting: [:bar]", {
+        total: collections.length,
+      });
 
+      try {
         // Loop thru collections
         let promises = collections.map(
           (c) =>
             new Promise(async (_res, _rej) => {
               try {
-                const data = await this.collectionDataToArray(db, c);
-                await this.localProcess.writeJSONFile(c, data);
+                const count = await db.collection(c).countDocuments();
+                const loops = Math.ceil(count / this.limit);
+
+                // Export Loops
+                for (let i = 1; i <= loops; i++) {
+                  const skip = this.limit * (i - 1);
+                  const data = await this.collectionDataToArray(db, c, skip);
+                  await this.localProcess.writeJSONFile(`${c}-${i}`, data);
+                }
+
+                // Increase
+                bar.tick();
+
                 return _res(true);
               } catch (err) {
                 _rej(err);
@@ -153,7 +198,7 @@ class MongoDB {
    * @param {array} collections - Collections to import
    * @return {Promise} - Promise after importing collections
    */
-  importJsonToCollections(collections) {
+  importData(collections) {
     return new Promise(async (res, rej) => {
       try {
         await this.client.connect();
@@ -162,12 +207,24 @@ class MongoDB {
         // Loop thru collections and drop if exists
         await this.removeDuplicateCollections(db, collections);
 
-        let promises = collections.map(
-          (c) =>
+        const files = this.localProcess.getTmpDirectoryArray();
+
+        const bar = new ProgressBar("Importing: [:bar]", {
+          total: files.length,
+        });
+        let promises = files.map(
+          (f) =>
             new Promise(async (_res, _rej) => {
+              const nameArr = f.split("-");
+              let c = nameArr[0];
+
               try {
-                const data = await this.localProcess.readJsonFile(c);
-                db.collection(c).insertMany(data);
+                const data = await this.localProcess.readJsonFile(f);
+                await db.collection(c).insertMany(data);
+
+                // Increase Bar
+                bar.tick();
+
                 return _res(true);
               } catch (err) {
                 _rej(err);
@@ -175,9 +232,14 @@ class MongoDB {
             }),
         );
 
-        Promise.all(promises).then(() => {
-          return res(true);
-        });
+        Promise.all(promises)
+          .then(() => {
+            this.client.close();
+            return res(true);
+          })
+          .catch((err) => {
+            return rej(err);
+          });
       } catch (err) {
         return rej(err);
       }

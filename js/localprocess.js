@@ -79,21 +79,33 @@ class LocalProcess {
    * @return {Promise} - Promise with parsed JSON data
    */
   readJsonFile(name) {
-    const file = path.join(this.tmpPath, `${name}.json`);
+    const file = path.join(this.tmpPath, name);
     return new Promise(async (res, rej) => {
       try {
         if (fs.existsSync(file)) {
-          // console.log(`EXISTS: ${file}`);
           const raw = await fs.readFile(file);
           return res(JSON.parse(raw));
         }
 
-        // console.log(`DOES NOT EXIST: ${file}`);
         res([]);
       } catch (err) {
         rej(err);
       }
     });
+  }
+
+  /**
+   * Get array of all files in directory
+   *
+   * @return {array} - Return array with all files
+   */
+  getTmpDirectoryArray() {
+    let arr = [];
+    fs.readdirSync(this.tmpPath).forEach((file) => {
+      arr.push(file);
+    });
+
+    return arr;
   }
 }
 

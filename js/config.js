@@ -1,4 +1,4 @@
-const prompt = require("prompt-sync")();
+const prompt = require("prompt-sync")({ sigint: true });
 const LocalProcess = require("./localprocess");
 
 /**
@@ -39,17 +39,11 @@ class Config {
    * @return {object} - returns survery configuration
    */
   survey() {
-    console.log("Connection Details To Pull Data From");
-    const from_uri = prompt("Enter From MongoDB URI:\n");
-
-    console.log("Connection Details To Pull Data From");
-    const from_db = prompt("Enter From MongoDB Database Name:\n");
-
-    console.log("Connection Details To Insert Data Into");
-    const to_uri = prompt("Enter To MongoDB URI:\n");
-
-    console.log("Connection Details To Insert Data Into");
-    const to_db = prompt("Enter To MongoDB Database Name:\n");
+    console.log("Enter Mongo Connection Details:");
+    var from_uri = prompt("Enter From MongoDB URI: ");
+    var from_db = prompt("Enter From MongoDB Database Name: ");
+    var to_uri = prompt("Enter To MongoDB URI: ");
+    var to_db = prompt("Enter To MongoDB Database Name: ");
 
     // Return Details
     return {

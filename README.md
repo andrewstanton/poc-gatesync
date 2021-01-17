@@ -3,14 +3,18 @@
 NodeJS program to quickly sync mongo databases for various environments
 Either use .env or follow command prompts given in shell
 
-## Todo
+# How Program Works
 
-- [ ] Complete survey in command prompt
-- [ ] Enable .env using
-- [ ] Testing MongoDB connections
-- [ ] Fix bug with applicants table
-- [ ] Finish using upload bar
+1. Run program with:
 
-Note: Would be nice to have some color messages along with a loading bar based on the number of tables that are getting inserted into db
+```
+npm run start
+```
 
-Note: Need a way to prevent accidentally swapping connections and inserting downloaded data into live connection
+2. If an `.env` file was setup following example provided in `.env.example` you will bypass the prompts on the screen
+
+3. The program will connect to the _FROM_ mongodb which will export all collections to chunked JSON files
+
+4. Then the program will connec to the _TO_ mongodb and import the chunked data
+
+5. The `tmp` folder for storing JSON files will be deleted
