@@ -29,11 +29,9 @@ async function main() {
 
     // Export All Data To JSON Files
     const arr = await db1.exportData();
-    console.log("\n");
 
     // Import JSON into mongo
     await db2.importData(arr);
-    console.log("\n");
 
     // Remove Tmp Directory
     local.removeTmpDir();

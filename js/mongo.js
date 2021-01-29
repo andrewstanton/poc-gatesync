@@ -102,21 +102,26 @@ class MongoDB {
         let arr = await db.listCollections().toArray();
 
         let promises = arr.map(
-          async (c) =>
+          (c) =>
             new Promise(async (_res, _rej) => {
               try {
                 if (collections.includes(c.name)) {
                   await db.dropCollection(c.name);
                 }
+                return _res(true);
               } catch (err) {
                 _rej(err);
               }
             }),
         );
 
-        Promise.all(promises).then(() => {
-          res(true);
-        });
+        Promise.all(promises)
+          .then(() => {
+            return res(true);
+          })
+          .catch((err) => {
+            return rej(err);
+          });
       } catch (err) {
         rej(err);
       }
