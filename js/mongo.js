@@ -1,6 +1,17 @@
 const LocalProcess = require("./localprocess");
 const { MongoClient } = require("mongodb");
 const ProgressBar = require("progress");
+const bcrypt = require("bcrypt");
+
+/**
+ * User Creation Status
+ * -- would be good as an Enum
+ */
+const USER_CREATE_STATUS = {
+  NONE: "none",
+  DUPLICATE: "duplicate",
+  CREATED: "created",
+};
 
 class MongoDB {
   /**
@@ -14,6 +25,7 @@ class MongoDB {
     this.db = db;
     this.limit = 1000;
     this.localProcess = new LocalProcess();
+    this.blacklistedCollection = ["sessions"];
     return this;
   }
 
@@ -27,7 +39,7 @@ class MongoDB {
     uri,
     options = {
       useUnifiedTopology: true,
-    },
+    }
   ) {
     this.client = new MongoClient(uri, options);
   }
@@ -112,7 +124,7 @@ class MongoDB {
               } catch (err) {
                 _rej(err);
               }
-            }),
+            })
         );
 
         Promise.all(promises)
@@ -147,6 +159,71 @@ class MongoDB {
   }
 
   /**
+   * Insert New User Into DB
+   *
+   * @param {MongoClient} db - database connection
+   * @param {object} config - Configuration object from prompts
+   * @return {Promise} - Return of query promise
+   */
+  insertNewUser(db, config) {
+    return new Promise(async (res, rej) => {
+      if (!config.user) {
+        return res({
+          status: USER_CREATE_STATUS.NONE,
+        });
+      }
+
+      const { email, first_name, last_name, region } = config.user;
+      const users = db.collection("users");
+      const record = await users.findOne({ email });
+
+      // Already in system
+      if (record) {
+        return res({
+          status: USER_CREATE_STATUS.DUPLICATE,
+        });
+      }
+
+      // Insert New User
+      const pwd = Math.random().toString(36).slice(2);
+      const hash = bcrypt.hashSync(pwd, 10);
+      const uid = new Date().getTime();
+      const security = [
+        { module: "meetings", access: "full", level: "regional" },
+        { module: "volunteers", access: "full", level: "regional" },
+        { module: "inmates", access: "full", level: "regional" },
+        { module: "facilities", access: "full", level: "regional" },
+        { module: "experiences", access: "full", level: "regional" },
+        { module: "statistics", access: "full", level: "regional" },
+        { module: "correspondence", access: "full", level: "regional" },
+        { module: "applicants", access: "full", level: "regional" },
+        { module: "settings", access: "full", level: "regional" },
+      ];
+
+      const insertRecord = {
+        userID: uid,
+        username: email,
+        email,
+        password: hash,
+        firstName: first_name,
+        lastName: last_name,
+        region,
+        role: "regional",
+        security,
+        status: "verifying",
+      };
+
+      await users.insertOne(insertRecord);
+      return res({
+        status: USER_CREATE_STATUS.CREATED,
+        pwd,
+        uid,
+        email,
+      });
+    });
+  }
+
+  /**
    * Export collections to json files
    *
    * @param {MongoClient} db - Connection to mongodb
@@ -155,6 +232,8 @@ class MongoDB {
    */
   exportCollectionsToJson(db, collections) {
     return new Promise(async (res, rej) => {
+      collections = this.filterCollections(collections);
+
       const bar = new ProgressBar("Exporting: [:bar]", {
         total: collections.length,
       });
@@ -182,7 +261,7 @@ class MongoDB {
               } catch (err) {
                 _rej(err);
               }
-            }),
+            })
         );
 
         // Wait Till All Promises Finish
@@ -198,13 +277,26 @@ class MongoDB {
   }
 
   /**
+   * Remove Blacklisted Collections From Variable
+   *
+   * @param {array} collections - Collections From Database
+   * @return {array} - Filtered Collections
+   */
+  filterCollections(collections) {
+    return collections.filter((c) => !this.blacklistedCollection.includes(c));
+  }
+
+  /**
    * Import JSON files into database
    *
    * @param {array} collections - Collections to import
+   * @param {object} config - Configuration Object
    * @return {Promise} - Promise after importing collections
    */
-  importData(collections) {
+  importData(collections, config) {
     return new Promise(async (res, rej) => {
+      collections = this.filterCollections(collections);
+
       try {
         await this.client.connect();
         const db = this.client.db(this.db);
@@ -234,11 +326,27 @@ class MongoDB {
               } catch (err) {
                 _rej(err);
               }
-            }),
+            })
         );
 
+        // After Inserting All Records In
         Promise.all(promises)
-          .then(() => {
+          .then(async () => {
+            // Insert New User
+            const info = await this.insertNewUser(db, config);
+
+            // Later can swap out for emailing information
+            switch (info.status) {
+              case USER_CREATE_STATUS.CREATED:
+                console.log(`\nUser Account Created With This Login Info:`);
+                console.log(`Email: ${info.email}`);
+                console.log(`Password: ${info.pwd}\n`);
+                break;
+              case USER_CREATE_STATUS.DUPLICATE:
+                console.log("User Account Already Exists In System");
+                break;
+            }
+
             this.client.close();
             return res(true);
           })

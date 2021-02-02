@@ -31,7 +31,7 @@ async function main() {
     const arr = await db1.exportData();
 
     // Import JSON into mongo
-    await db2.importData(arr);
+    await db2.importData(arr, config);
 
     // Remove Tmp Directory
     local.removeTmpDir();
@@ -42,6 +42,7 @@ async function main() {
   } catch (err) {
     console.log("ERROR OCCURRED!");
     console.log({ err });
+    process.exit();
   }
 }
 

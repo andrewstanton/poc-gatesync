@@ -4,7 +4,6 @@ const path = require("path");
 class LocalProcess {
   /**
    * Constructor Function
-   *
    * @return {LocalProcess} - returns instance of LocalProcess class
    */
   constructor() {
@@ -15,7 +14,6 @@ class LocalProcess {
 
   /**
    * Test to see if env exists
-   *
    * @return {boolean} - Returns boolean to see if env is setup
    */
   isEnvSetup() {
@@ -41,7 +39,6 @@ class LocalProcess {
   /**
    * Create tmp directory for storing files
    * if "tmp" folder exists it will be emptied
-   *
    * @return {string} - path to tmp directory
    */
   createTmpDir() {
@@ -51,7 +48,6 @@ class LocalProcess {
 
   /**
    * Removes tmp directory for storing files
-   *
    * @return {void}
    */
   removeTmpDir() {
@@ -64,7 +60,6 @@ class LocalProcess {
    *
    * @param {string} name - name of JSON file
    * @param {object|array} data - Data to export to JSON file
-   *
    * @return {Promise} - writing to file Promise
    */
   writeJSONFile(name, data) {
@@ -96,7 +91,6 @@ class LocalProcess {
 
   /**
    * Get array of all files in directory
-   *
    * @return {array} - Return array with all files
    */
   getTmpDirectoryArray() {
