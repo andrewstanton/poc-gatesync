@@ -21,6 +21,8 @@ async function main() {
   // Get MongoDB Config Details
   const config = new Config();
 
+  const timer = process.hrtime();
+
   // Setup MongoClient
   try {
     // Connect to databases
@@ -38,6 +40,8 @@ async function main() {
 
     // Completed Migration
     console.log("MIGRATION COMPLETE!");
+    console.log(`Time: ${process.hrtime(timer)[0]}s`);
+
     process.exit();
   } catch (err) {
     console.log("ERROR OCCURRED!");

@@ -345,6 +345,9 @@ class MongoDB {
               case USER_CREATE_STATUS.DUPLICATE:
                 console.log("User Account Already Exists In System");
                 break;
+              default:
+                console.log("No Additional User Was Inserted");
+                break;
             }
 
             this.client.close();
