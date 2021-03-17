@@ -72,7 +72,10 @@ class MongoDB {
         const db = this.client.db(this.db);
 
         const arr = await this.getAllCollections(db);
-        await this.exportCollectionsToJson(db, arr);
+        await this.exportCollectionsToBson(db, arr);
+
+        // Export Indexes
+        await this.exportAllIndexes(db, arr);
 
         res(arr);
       } catch (err) {
@@ -98,6 +101,32 @@ class MongoDB {
       } catch (err) {
         rej(err);
       }
+    });
+  }
+
+  /**
+   * Get Indexes For Collections
+   *
+   * @param {MongoClient} db - MongoDB database connection
+   * @param {array} collections - Collections
+   * @return  {Promise} - Promise with either connection or error
+   */
+  exportAllIndexes(db, collections) {
+    collections = this.filterCollections(collections);
+
+    return new Promise(async (res, rej) => {
+      collections.forEach(async (c) => {
+        try {
+          // Generate Files
+          const arr = db.collection(c).indexes();
+          await this.localProcess.writeBSONFile(`${c}-index`, arr);
+
+          return res(arr);
+        } catch (err) {
+          console.log({ err });
+          return rej(err);
+        }
+      });
     });
   }
 
@@ -230,7 +259,7 @@ class MongoDB {
    * @param {array} collections - Array of collection names
    * @return {Promise} - Promise when all JSON files have been written
    */
-  exportCollectionsToJson(db, collections) {
+  exportCollectionsToBson(db, collections) {
     return new Promise(async (res, rej) => {
       collections = this.filterCollections(collections);
 

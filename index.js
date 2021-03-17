@@ -33,10 +33,10 @@ async function main() {
     const arr = await db1.exportData();
 
     // Import JSON into mongo
-    await db2.importData(arr, config);
+    // await db2.importData(arr, config);
 
-    // Remove Tmp Directory
-    local.removeTmpDir();
+    // // Remove Tmp Directory
+    // local.removeTmpDir();
 
     // Completed Migration
     console.log("MIGRATION COMPLETE!");

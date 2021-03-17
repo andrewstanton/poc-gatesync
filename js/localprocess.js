@@ -118,7 +118,6 @@ class LocalProcess {
           const data = bson.deserialize(raw);
 
           // Convert Object To Array
-
           const arr = [];
           Object.keys(data).map((key) => {
             arr.push(data[key]);
