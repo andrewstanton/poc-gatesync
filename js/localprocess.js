@@ -1,5 +1,6 @@
 const fs = require("fs-extra");
 const path = require("path");
+const bson = require("bson");
 
 class LocalProcess {
   /**
@@ -68,6 +69,19 @@ class LocalProcess {
   }
 
   /**
+   * Write data to BSON file
+   *
+   * @param {string} name - name of JSON file
+   * @param {object|array} data - Date To Export To JSON
+   * @return {Promise} - Writing to file
+   */
+  writeBSONFile(name, data) {
+    const file = path.join(this.tmpPath, `${name}.bson`);
+    const bdata = bson.serialize(data);
+    return fs.writeFile(file, bdata);
+  }
+
+  /**
    * Read in JSON data from tmp directory
    *
    * @param {string} name - JSON file name
@@ -80,6 +94,36 @@ class LocalProcess {
         if (fs.existsSync(file)) {
           const raw = await fs.readFile(file);
           return res(JSON.parse(raw));
+        }
+
+        res([]);
+      } catch (err) {
+        rej(err);
+      }
+    });
+  }
+
+  /**
+   * Read in BSON data from tmp directory
+   *
+   * @param {string} name - BSON file name
+   * @return {Promise} - Promise with parsed BSON data
+   */
+  readBsonFile(name) {
+    const file = path.join(this.tmpPath, name);
+    return new Promise(async (res, rej) => {
+      try {
+        if (fs.existsSync(file)) {
+          const raw = await fs.readFile(file);
+          const data = bson.deserialize(raw);
+
+          // Convert Object To Array
+
+          const arr = [];
+          Object.keys(data).map((key) => {
+            arr.push(data[key]);
+          });
+          return res(arr);
         }
 
         res([]);

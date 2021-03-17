@@ -39,7 +39,7 @@ class MongoDB {
     uri,
     options = {
       useUnifiedTopology: true,
-    }
+    },
   ) {
     this.client = new MongoClient(uri, options);
   }
@@ -124,7 +124,7 @@ class MongoDB {
               } catch (err) {
                 _rej(err);
               }
-            })
+            }),
         );
 
         Promise.all(promises)
@@ -251,7 +251,7 @@ class MongoDB {
                 for (let i = 1; i <= loops; i++) {
                   const skip = this.limit * (i - 1);
                   const data = await this.collectionDataToArray(db, c, skip);
-                  await this.localProcess.writeJSONFile(`${c}-${i}`, data);
+                  await this.localProcess.writeBSONFile(`${c}-${i}`, data);
                 }
 
                 // Increase
@@ -261,7 +261,7 @@ class MongoDB {
               } catch (err) {
                 _rej(err);
               }
-            })
+            }),
         );
 
         // Wait Till All Promises Finish
@@ -316,7 +316,7 @@ class MongoDB {
               let c = nameArr[0];
 
               try {
-                const data = await this.localProcess.readJsonFile(f);
+                const data = await this.localProcess.readBsonFile(f);
                 await db.collection(c).insertMany(data);
 
                 // Increase Bar
@@ -326,7 +326,7 @@ class MongoDB {
               } catch (err) {
                 _rej(err);
               }
-            })
+            }),
         );
 
         // After Inserting All Records In
