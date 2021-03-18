@@ -39,7 +39,7 @@ class MongoDB {
     uri,
     options = {
       useUnifiedTopology: true,
-    },
+    }
   ) {
     this.client = new MongoClient(uri, options);
   }
@@ -153,7 +153,7 @@ class MongoDB {
               } catch (err) {
                 _rej(err);
               }
-            }),
+            })
         );
 
         Promise.all(promises)
@@ -290,7 +290,7 @@ class MongoDB {
               } catch (err) {
                 _rej(err);
               }
-            }),
+            })
         );
 
         // Wait Till All Promises Finish
@@ -316,6 +316,32 @@ class MongoDB {
   }
 
   /**
+   * Import Index Files
+   *
+   * @param {string[]} files - Array of bson files
+   * @return {Promise[]} - Array of promises
+   */
+  importIndexes(files) {
+    return files.map(
+      (f) =>
+        new Promise(async (_res, _rej) => {
+          const nameArr = f.split("-");
+          let c = nameArr[0];
+
+          try {
+            const data = await this.localProcess.readBsonFile(f);
+            // NEED TO INSERT INDEXES
+            // await db.collection(c).insertMany(data);
+
+            return _res(true);
+          } catch (err) {
+            _rej(err);
+          }
+        })
+    );
+  }
+
+  /**
    * Import JSON files into database
    *
    * @param {array} collections - Collections to import
@@ -335,10 +361,14 @@ class MongoDB {
 
         const files = this.localProcess.getTmpDirectoryArray();
 
+        // Seperate Index files and Collection
+        const ifiles = files.filter((f) => f.includes("index.bson"));
+        const cfiles = files.filter((f) => !f.includes("index.bson"));
+
         const bar = new ProgressBar("Importing: [:bar]", {
-          total: files.length,
+          total: cfiles.length,
         });
-        let promises = files.map(
+        let promises = cfiles.map(
           (f) =>
             new Promise(async (_res, _rej) => {
               const nameArr = f.split("-");
@@ -355,7 +385,7 @@ class MongoDB {
               } catch (err) {
                 _rej(err);
               }
-            }),
+            })
         );
 
         // After Inserting All Records In
