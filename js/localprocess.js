@@ -117,12 +117,7 @@ class LocalProcess {
           const raw = await fs.readFile(file);
           const data = bson.deserialize(raw);
 
-          // Convert Object To Array
-          const arr = [];
-          Object.keys(data).map((key) => {
-            arr.push(data[key]);
-          });
-          return res(arr);
+          return res(data);
         }
 
         res([]);
@@ -130,6 +125,22 @@ class LocalProcess {
         rej(err);
       }
     });
+  }
+
+  /**
+   * Convert BSON Object to Array
+   *
+   * @param {Object} object
+   * @return {array}
+   */
+  convertBSONObjectToArray(obj) {
+    // Convert Object To Array
+    const arr = [];
+    Object.keys(obj).map((key) => {
+      arr.push(obj[key]);
+    });
+
+    return arr;
   }
 
   /**

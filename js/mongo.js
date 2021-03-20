@@ -118,12 +118,11 @@ class MongoDB {
       collections.forEach(async (c) => {
         try {
           // Generate Files
-          const arr = db.collection(c).indexes();
-          await this.localProcess.writeBSONFile(`${c}-index`, arr);
+          const arr = await db.collection(c).indexes();
+          await this.localProcess.writeJSONFile(`${c}-index`, arr);
 
           return res(arr);
         } catch (err) {
-          console.log({ err });
           return rej(err);
         }
       });
@@ -216,7 +215,7 @@ class MongoDB {
       // Insert New User
       const pwd = Math.random().toString(36).slice(2);
       const hash = bcrypt.hashSync(pwd, 10);
-      const uid = new Date().getTime();
+      const uid = new Date().getTime().toString();
       const security = [
         { module: "meetings", access: "full", level: "regional" },
         { module: "volunteers", access: "full", level: "regional" },
@@ -318,10 +317,11 @@ class MongoDB {
   /**
    * Import Index Files
    *
+   * @param {MongoClient} db - Connection to mongodb
    * @param {string[]} files - Array of bson files
    * @return {Promise[]} - Array of promises
    */
-  importIndexes(files) {
+  importIndexes(db, files) {
     return files.map(
       (f) =>
         new Promise(async (_res, _rej) => {
@@ -329,13 +329,16 @@ class MongoDB {
           let c = nameArr[0];
 
           try {
-            const data = await this.localProcess.readBsonFile(f);
-            // NEED TO INSERT INDEXES
-            // await db.collection(c).insertMany(data);
+            const data = await this.localProcess.readJsonFile(f);
 
-            return _res(true);
+            // Exit if no indexes
+            if (Object.keys(data).length < 1) return _res(true);
+
+            const result = await db.collection(c).createIndex(data);
+
+            return _res(result);
           } catch (err) {
-            _rej(err);
+            return _rej(err);
           }
         })
     );
@@ -362,8 +365,8 @@ class MongoDB {
         const files = this.localProcess.getTmpDirectoryArray();
 
         // Seperate Index files and Collection
-        const ifiles = files.filter((f) => f.includes("index.bson"));
-        const cfiles = files.filter((f) => !f.includes("index.bson"));
+        const ifiles = files.filter((f) => f.includes("index.json"));
+        const cfiles = files.filter((f) => !f.includes("index.json"));
 
         const bar = new ProgressBar("Importing: [:bar]", {
           total: cfiles.length,
@@ -376,14 +379,15 @@ class MongoDB {
 
               try {
                 const data = await this.localProcess.readBsonFile(f);
-                await db.collection(c).insertMany(data);
+                const arr = this.localProcess.convertBSONObjectToArray(data);
+                await db.collection(c).insertMany(arr);
 
                 // Increase Bar
                 bar.tick();
 
                 return _res(true);
               } catch (err) {
-                _rej(err);
+                return _rej(err);
               }
             })
         );
@@ -391,26 +395,42 @@ class MongoDB {
         // After Inserting All Records In
         Promise.all(promises)
           .then(async () => {
-            // Insert New User
-            const info = await this.insertNewUser(db, config);
+            // Insert Indexes
+            try {
+              const ipromises = this.importIndexes(db, ifiles);
+              Promise.all(ipromises)
+                .then(async () => {
+                  try {
+                    // Insert New User
+                    const info = await this.insertNewUser(db, config);
 
-            // Later can swap out for emailing information
-            switch (info.status) {
-              case USER_CREATE_STATUS.CREATED:
-                console.log(`\nUser Account Created With This Login Info:`);
-                console.log(`Email: ${info.email}`);
-                console.log(`Password: ${info.pwd}\n`);
-                break;
-              case USER_CREATE_STATUS.DUPLICATE:
-                console.log("User Account Already Exists In System");
-                break;
-              default:
-                console.log("No Additional User Was Inserted");
-                break;
+                    // Later can swap out for emailing information
+                    switch (info.status) {
+                      case USER_CREATE_STATUS.CREATED:
+                        console.log(
+                          `\nUser Account Created With This Login Info:`
+                        );
+                        console.log(`Email: ${info.email}`);
+                        console.log(`Password: ${info.pwd}\n`);
+                        break;
+                      case USER_CREATE_STATUS.DUPLICATE:
+                        console.log("User Account Already Exists In System");
+                        break;
+                      default:
+                        console.log("No Additional User Was Inserted");
+                        break;
+                    }
+                    return res(true);
+                  } catch (err) {
+                    return rej(err);
+                  }
+                })
+                .catch((err) => {
+                  return rej(err);
+                });
+            } catch (err) {
+              return rej(err);
             }
-
-            this.client.close();
-            return res(true);
           })
           .catch((err) => {
             return rej(err);
